@@ -1,6 +1,8 @@
 
 using Microsoft.EntityFrameworkCore;
 using netcore_webapi.Data;
+using netcore_webapi.IServices;
+using netcore_webapi.Services;
 
 namespace netcore_webapi
 {
@@ -18,6 +20,12 @@ namespace netcore_webapi
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
+
+
+            builder.Services.AddScoped<IAuthService, AuthService>();
+
+
+
 
             var app = builder.Build();
 
