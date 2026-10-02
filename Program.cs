@@ -22,8 +22,9 @@ namespace netcore_webapi
             builder.Services.AddOpenApi();
 
 
+            // service registration for services i create
             builder.Services.AddScoped<IAuthService, AuthService>();
-
+            builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 
 
