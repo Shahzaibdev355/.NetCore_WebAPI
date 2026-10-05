@@ -82,6 +82,13 @@ namespace netcore_webapi.Services
             try
             {
 
+                if(employee == null)
+                {
+                    return new Tuple<int, string>(404, "Pls fill all required details");
+
+                }
+
+
                 var existing = await _context.Employees.FirstOrDefaultAsync(x => x.EmailAddress == employee.EmailAddress);
 
                 if (existing == null)
@@ -107,6 +114,24 @@ namespace netcore_webapi.Services
                 throw;
             }
         }
+
+
+
+        public async Task<Tuple<int, string>> DeleteEmployee(Guid id)
+        {
+            var data = await _context.Employees.FirstOrDefaultAsync(x => x.Id == id);
+
+            if (data == null)
+            {
+                return new Tuple<int, string>(404, "Employee not found with the given Email Id");
+            }
+
+            _context.Employees.Remove(data);
+            await _context.SaveChangesAsync();
+
+            return new Tuple<int, string>(200, "Employee Deleted Successfully");
+        }
+
 
 
 

@@ -8,5 +8,7 @@ namespace netcore_webapi.IServices
         Task<Tuple<int, string>> CreateEmployee(EmployeeDto employee);
 
         Task<Tuple<int, string>> UpdateEmployee(EmployeeDto employee);
+
+        Task<Tuple<int, string>> DeleteEmployee(Guid id);
     }
 }

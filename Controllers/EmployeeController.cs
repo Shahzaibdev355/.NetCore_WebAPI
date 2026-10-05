@@ -81,6 +81,28 @@ namespace netcore_webapi.Controllers
         }
 
 
+        [HttpDelete("DeleteEmployee")]
+        public async Task<IActionResult> DeleteEmployee(Guid id)
+        {
+            try
+            {
+
+                var result = await employeeService.DeleteEmployee(id);
+
+                if(result.Item1 == 0)
+                {
+                    return Ok(ResponseResult<string>.Failure(null, result.Item2));
+                }
+
+                return Ok(ResponseResult<string>.Success(null, result.Item2));
+
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
 
 
     }
