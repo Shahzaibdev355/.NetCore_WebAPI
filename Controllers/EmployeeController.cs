@@ -104,6 +104,27 @@ namespace netcore_webapi.Controllers
         }
 
 
+        [HttpGet("GetEmployeeById/{id}")]
+        public async Task<IActionResult> GetEmployeeById(Guid id)
+        {
+            try
+            {
+
+                var result = await employeeService.GetEmployeeById(id);
+                if (result.Item1 == 0)
+                {
+                    return Ok(ResponseResult<EmployeeDto>.Failure(null, "Employee not found."));
+                }
+                return Ok(ResponseResult<EmployeeDto>.Success(result.Item2, "Employee retrieved successfully."));
+
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+
 
     }
 }

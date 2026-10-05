@@ -134,6 +134,29 @@ namespace netcore_webapi.Services
 
 
 
+        public async Task<Tuple<int, EmployeeDto>> GetEmployeeById(Guid id)
+        {
+            var employee = await _context.Employees
+              .AsNoTracking()
+              .Where(e => e.Id == id)
+              .Select(e => new EmployeeDto
+              {
+                  Id = e.Id,
+                  Name = e.Name,
+                  CreatedDate = e.CreatedDate,
+                  LastModifiedDate = e.LastModifiedDate,
+                  DOB = e.DOB,
+                  Position = e.Position,
+                  Department = e.Department,
+                  EmailAddress = e.EmailAddress
+              })
+              .FirstOrDefaultAsync();
+
+            return new Tuple<int, EmployeeDto>(200, employee);
+
+        }
+
+
 
 
 
