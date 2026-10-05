@@ -1,68 +1,92 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using netcore_webapi.Data;
 using netcore_webapi.Dto;
 using netcore_webapi.IServices;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace netcore_webapi.Services
 {
-    public class AuthService(AppDbContext _context) : IAuthService
+    public class AuthService(
+             AppDbContext _context,
+             IHttpContextAccessor _httpContextAccessor
+         ) : IAuthService
     {
 
         public async Task<Tuple<int, string>> LoginUser(UserDto dto)
         {
             try
             {
+                var existingUser = await _context.AccountUsers
+                    .FirstOrDefaultAsync(x => x.Email == dto.Email);
 
-                var exisitingUser = await _context.AccountUsers.FirstOrDefaultAsync(x => x.Email == dto.Email);
-
-                if (exisitingUser == null)
+                if (existingUser == null)
                 {
-                    return new Tuple<int, string>(404, "User not found, Pls Register");
+                    return new Tuple<int, string>(
+                        404,
+                        "User not found, Please Register"
+                    );
                 }
-
-                //if (exisitingUser.Password != dto.Password)
-                //{
-                //    return new Tuple<int, string>(401, "Password is incorrect");
-                //}
-
-
-                //return new Tuple<int, string>(200, "Login Successful");
-
 
                 var passwordHasher = new PasswordHasher<string>();
-                var verifyPassword = passwordHasher.VerifyHashedPassword(dto.Email, exisitingUser.Password, dto.Password);
 
-                if (verifyPassword == PasswordVerificationResult.Success)
+                var verifyPassword = passwordHasher.VerifyHashedPassword(
+                    dto.Email,
+                    existingUser.Password,
+                    dto.Password
+                );
+
+                if (verifyPassword == PasswordVerificationResult.Failed)
                 {
-                    return new Tuple<int, string>(200, "Login Successful");
+                    return new Tuple<int, string>(
+                        401,
+                        "Password is incorrect"
+                    );
                 }
 
-                else if (verifyPassword == PasswordVerificationResult.SuccessRehashNeeded)
+                // Rehash if required
+                if (verifyPassword == PasswordVerificationResult.SuccessRehashNeeded)
                 {
-                    // Rehash the password and update it in the database
+                    existingUser.Password = PasswordHashing(dto);
 
-                    exisitingUser.Password = PasswordHashing(dto);
-                    _context.AccountUsers.Update(exisitingUser);
-                    _context.SaveChanges();
+                    _context.AccountUsers.Update(existingUser);
 
-                    return new Tuple<int, string>(200, "Login Successful, new password hashed");
-
-                }
-                else if (verifyPassword == PasswordVerificationResult.Failed)
-                {
-                    return new Tuple<int, string>(401, "Password is incorrect");
-
+                    await _context.SaveChangesAsync();
                 }
 
-                return new Tuple<int, string>(200, "");
+                // Generate JWT
+                var token = GenerateJwtToken(existingUser);
 
+                // Store JWT in HttpOnly cookie
+                _httpContextAccessor.HttpContext!.Response.Cookies.Append(
+                    "jwt_key",
+                    token,
+                    new CookieOptions
+                    {
+                        HttpOnly = true,
+                        Secure = false,
+                        SameSite = SameSiteMode.Strict,
+                        Expires = DateTimeOffset.UtcNow.AddMinutes(30)
+                    }
+                );
+
+                return new Tuple<int, string>(
+                    200,
+                    "Login Successful"
+                );
             }
             catch (Exception)
             {
-                return new Tuple<int, string>(500, "Internal Server Error");
+                return new Tuple<int, string>(
+                    500,
+                    "Internal Server Error"
+                );
             }
         }
+
 
 
         public async Task<Tuple<int, string>> RegisterUser(UserDto dto)
@@ -106,6 +130,46 @@ namespace netcore_webapi.Services
             return hash;
         }
 
+
+
+        private string GenerateJwtToken(Entities.User user)
+        {
+            var jwtHandler = new JwtSecurityTokenHandler();
+
+            var key = Encoding.UTF8.GetBytes(
+                "1JP6JfDJJ9CMh0tXjOlioUH4Cm69QYmCtjl6xBhWeZS"
+            );
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new[]
+                {
+                    new Claim(
+                        ClaimTypes.NameIdentifier,
+                        user.Id.ToString()
+                    ),
+
+                    new Claim(ClaimTypes.Name, user.Name),
+
+                    new Claim(ClaimTypes.Email,user.Email)
+                }),
+
+                Expires = DateTime.UtcNow.AddMinutes(30),
+
+                Issuer = "shahzaib-client",
+
+                Audience = "shahzaib-backend",
+
+                SigningCredentials = new SigningCredentials(
+                    new SymmetricSecurityKey(key),
+                    SecurityAlgorithms.HmacSha256
+                )
+            };
+
+            var token = jwtHandler.CreateToken(tokenDescriptor);
+
+            return jwtHandler.WriteToken(token);
+        }
 
 
 
